@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebRTC webcam</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
+    <style>
+        .message-box {
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            min-height: 50px;
+            text-align: left;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app" style="text-align: center; padding-top: 100px">
+        <button style="height: 100px; width: 100px" @click="start" v-if="!isStarted">Start</button>
+        <button style="height: 100px; width: 100px" @click="stop" v-else>Stop</button>
+        {{ this.status }}
+
+        <div id="media">
+            <video ref="localAudio" autoplay muted></video>
+            <video ref="serverAudio" autoplay="true"></video>
+        </div>
+
+        <p><strong>Messages from server</strong></p>
+        <div class="message-box">
+            <p v-for="(message, index) in messages" :key="index">{{ message }}</p>
+        </div>
+    </div>
+
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                pc: null,
+                localStream: null,
+                isStarted: false,
+                status: null,
+                dataChannel: null,
+                messages: [],
+            },
+            mounted() {
+                this.initializeMedia();
+            },
+            methods: {
+                async initializeMedia() {
+                    try {
+                        this.localStream = await navigator.mediaDevices.getUserMedia({
+                            video: false,
+                            audio: true,
+                        });
+                        this.$refs.localAudio.srcObject = this.localStream;
+                        this.$refs.localAudio.addEventListener('loadedmetadata', () => {
+                            this.$refs.localAudio.play();
+                        });
+                    } catch (error) {
+                        console.error('Error accessing media devices:', error);
+                    }
+                },
+
+                async negotiate() {
+                    try {
+                        const offer = await this.pc.createOffer();
+                        await this.pc.setLocalDescription(offer);
+
+                        // Wait for ICE gathering to complete
+                        await new Promise(resolve => {
+                            if (this.pc.iceGatheringState === 'complete') {
+                                resolve();
+                            } else {
+                                const checkState = () => {
+                                    if (this.pc.iceGatheringState === 'complete') {
+                                        this.pc.removeEventListener('icegatheringstatechange', checkState);
+                                        resolve();
+                                    }
+                                };
+                                this.pc.addEventListener('icegatheringstatechange', checkState);
+                            }
+                        });
+
+                        const response = await fetch('/api/offer', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                sdp: this.pc.localDescription.sdp,
+                                type: this.pc.localDescription.type,
+                            })
+                        });
+
+                        const answer = await response.json();
+                        await this.pc.setRemoteDescription(answer);
+                    } catch (error) {
+                        console.error('Error during negotiation:', error);
+                        alert('Error during negotiation: ' + error.message);
+                    }
+                },
+
+                // 接收服务端信息 todo
+                setupDataChannel() {
+                    // Create a data channel for text messages
+                    this.dataChannel = this.pc.createDataChannel('chat');
+
+                    this.dataChannel.onopen = () => {
+                        console.log('Data channel is open');
+                        // You can send messages to the server if needed
+                        // this.dataChannel.send('Hello from client');
+                    };
+
+                    this.dataChannel.onmessage = (event) => {
+                        console.log('Received message:', typeof event.data, event.data);
+                        this.messages.push(event.data);
+                    };
+
+                    this.dataChannel.onclose = () => {
+                        console.log('Data channel closed');
+                    };
+
+                    // Handle server-initiated data channels
+                    this.pc.ondatachannel = (event) => {
+                        const channel = event.channel;
+                        console.log('Data channel from server:', channel.label);
+
+                        channel.onmessage = (e) => {
+                            console.log('Received message from server channel:', e.data);
+                            const data = JSON.parse(e.data);
+                            if (data["type"] === "ws" && data["state"] === "close"){
+                                this.dataChannel.close();
+                                this.pc.close();
+                                this.stop();
+                            }else {
+                             this.messages.push(data);
+                            }
+
+                        };
+                    };
+                },
+
+                start() {
+                    this.pc = new RTCPeerConnection(null);
+                    this.status = "connecting...";
+
+                    // Setup data channel for text messages
+                    this.setupDataChannel();
+
+                    // Add audio tracks
+                    this.localStream.getAudioTracks().forEach(track => {
+                        this.pc.addTrack(track, this.localStream);
+                    });
+
+                    // Handle incoming tracks
+                    this.pc.addEventListener('track', (evt) => {
+                        if (evt.track.kind === 'audio') {
+                            this.$refs.serverAudio.srcObject = evt.streams[0];
+                        }
+                    });
+
+                    // Add connection state change listener
+                    this.pc.addEventListener('connectionstatechange', () => {
+                        console.log('Connection state:', this.pc.connectionState);
+                        this.status = this.pc.connectionState;
+
+                        if (this.pc.connectionState === 'connected') {
+                            console.log('WebRTC connection established successfully!');
+                        }
+                    });
+
+                    this.isStarted = true;
+                    this.negotiate();
+                },
+
+                stop() {
+                    this.isStarted = false;
+                    this.messages = [];
+                    this.status = null;
+
+                    setTimeout(() => {
+                        if (this.dataChannel) {
+                            this.dataChannel.close();
+                            this.dataChannel = null;
+                        }
+
+                        if (this.pc) {
+                            this.pc.close();
+                            this.pc = null;
+                        }
+                    }, 500);
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>

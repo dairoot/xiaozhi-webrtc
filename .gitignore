@@ -1,0 +1,7 @@
+__pycache__/
+.idea/
+.DS_Store
+.venv/
+
+remote_dev.sh
+build_docker_image.sh

@@ -1,0 +1,2 @@
+# MAC_ADDR
+MAC_ADDR = "00:00:00:00:00:AA"

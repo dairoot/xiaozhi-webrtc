@@ -1,0 +1,11 @@
+services:
+  web:
+    # build: .
+    image: dairoot/xiaozhi-webrtc:latest
+    ports:
+      - "8083:8083"
+    volumes:
+      - ./:/app/
+
+
+
