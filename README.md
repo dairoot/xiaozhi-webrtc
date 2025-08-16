@@ -24,7 +24,7 @@ https://github.com/user-attachments/assets/525cc396-15e8-48ea-bd70-492845d055db
 
 ```bash
 # 克隆项目
-git clone <repository-url>
+git clone https://github.com/dairoot/xiaozhi-webrtc.git
 cd xiaozhi-webrtc
 ```
 
