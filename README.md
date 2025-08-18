@@ -4,12 +4,14 @@
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 一个基于 WebRTC 实时音视频通信项目，集成了 XiaoZhi SDK 
+--- 
 
 ## ✨ 功能特性
 
 - [x] 集成 XiaoZhi 基础能力
 - [x] 实时音视频通信
 - [ ] 数字人 替换成视频或者h5（计划中）
+--- 
 
 ## 🎯  在线体验
 
@@ -19,6 +21,7 @@
 
 
 https://github.com/user-attachments/assets/525cc396-15e8-48ea-bd70-492845d055db
+--- 
 
 ## 🚀 快速开始
 
@@ -62,6 +65,7 @@ pip install -e .
 # 运行项目
 python main.py
 ```
+--- 
 
 ## ⚙️ 部署要求
 
@@ -89,3 +93,7 @@ WebRTC 需要以下端口用于实时音视频通信：
 4. **开始通信**: 点击开始按钮建立 WebRTC 连接
 
 **注意**: 生产环境必须使用 HTTPS，否则 WebRTC 功能将无法正常工作。
+
+--- 
+## 🫡 致敬
+- 虾哥 [xiaozhi-esp32](https://github.com/78/xiaozhi-esp32) 项目
