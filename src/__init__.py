@@ -7,7 +7,7 @@ from aiohttp import web
 from aiortc import RTCPeerConnection, RTCSessionDescription
 from xiaozhi_sdk import XiaoZhiWebsocket
 
-from src.config import MAC_ADDR
+from src.config import DEFAULT_MAC_ADDR, OTA_URL
 from src.track.audio import AudioFaceSwapper
 from src.track.video import VideoFaceSwapper
 
@@ -31,7 +31,7 @@ async def offer(request):
 
     # Store client IP in the peer connection object
     pc.client_ip = request.headers.get("X-Real-IP", "")
-    pc.mac_address = params.get("macAddress") or MAC_ADDR
+    pc.mac_address = params.get("macAddress") or DEFAULT_MAC_ADDR
 
     await server(pc, _offer)
 
@@ -59,7 +59,7 @@ async def server(pc, offer):
             pc.video_track.set_emoji(message["text"])
 
     xiaozhi = XiaoZhiWebsocket(
-        message_handler_callback, audio_sample_rate=48000, audio_channels=2
+        message_handler_callback, ota_url=OTA_URL, audio_sample_rate=48000, audio_channels=2
     )
 
     def mcp_tool_func():
