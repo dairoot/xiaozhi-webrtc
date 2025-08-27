@@ -18,7 +18,17 @@ ROOT = os.path.dirname(__file__)
 
 
 async def index(request):
-    content = open(os.path.join(ROOT, "index_v3.html"), "r", encoding="utf-8").read()
+    content = open(os.path.join(ROOT, "index.html"), "r", encoding="utf-8").read()
+    return web.Response(content_type="text/html", text=content)
+
+async def test(request):
+    content = open(os.path.join(ROOT, "indexv2.html"), "r", encoding="utf-8").read()
+    return web.Response(content_type="text/html", text=content)
+
+
+
+async def main_page(request):
+    content = open(os.path.join(ROOT, "index_main.html"), "r", encoding="utf-8").read()
     return web.Response(content_type="text/html", text=content)
 
 
@@ -148,6 +158,10 @@ def run():
     app.on_shutdown.append(on_shutdown)
 
     app.router.add_get("/", index)
+    app.router.add_get("/test", test)
+
+    app.router.add_get("/main", main_page)
     app.router.add_post("/api/offer", offer)
+    app.router.add_static("/static/", path=os.path.join(ROOT, "static"), name="static")
 
     web.run_app(app, host="0.0.0.0", port=8083)

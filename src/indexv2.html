@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live2D + PIXI（无 Vue）</title>
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #f1e6aa;
+      }
+      #stage {
+        position: fixed;
+        inset: 0;
+        /* width: 100vw; */
+        /* height: 100vh; */
+        display: block;
+      }
+  
+    </style>
+  </head>
+  <body>
+    <canvas id="stage"></canvas>
+
+    <!-- Live2D Cubism Core -->
+    <script src="static/js/live2dcubismcore.min.js"></script>
+
+    <!-- PIXI.js -->
+    <script src="static/js/pixi.js"></script>
+    <!-- pixi-live2d-display UMD 构建 -->
+    <script src="static/js/cubism4.min.js"></script>
+
+    <script>
+      (async function () {
+        const canvas = document.getElementById('stage');
+
+        const app = new PIXI.Application({
+          view: canvas,
+          height: window.innerHeight,
+          width: window.innerWidth,
+          resolution: window.devicePixelRatio,
+          autoDensity: true,
+          antialias: true,
+          backgroundAlpha: 0,
+
+        });
+
+        // 供内部使用
+        window.PIXI = PIXI;
+
+        let model = null;
+        try {
+          // 选择一个现有模型（可换成 shizuku 或 mao_pro）
+          model = await PIXI.live2d.Live2DModel.from('static/hiyori_pro_zh/runtime/hiyori_pro_t11.model3.json');
+          app.stage.addChild(model);
+          model.scale.set(0.2);
+          model.x = (window.innerWidth  - model.width) * 0.5;
+
+        } catch (err) {
+          console.error('加载 Live2D 模型失败:', err);
+        }
+      })();
+    </script>
+  </body>
+</html>

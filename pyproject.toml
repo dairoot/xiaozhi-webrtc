@@ -18,7 +18,7 @@ dependencies = [
     "opuslib>=3.0.0",
     "opencv-python>=4.8.0",
     "aiortc>=1.13.0",
-    "xiaozhi-sdk",
+    "xiaozhi-sdk>=0.1.1",
 ]
 
 [project.optional-dependencies]
