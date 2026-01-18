@@ -72,8 +72,9 @@ async def chat(request):
 
 
 async def ice(request):
-    """返回ICE服务器配置"""
-    ice_servers_config = ice_config.get_ice_config()
+    """返回ICE服务器配置（使用临时凭证）"""
+    client_ip = get_client_ip(request)
+    ice_servers_config = ice_config.get_ice_config(client_id=client_ip)
     return web.Response(content_type="application/json", text=json.dumps(ice_servers_config, ensure_ascii=False))
 
 
