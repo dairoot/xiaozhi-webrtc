@@ -17,7 +17,7 @@ class ICEConfig:
             # "stun:stun.miwifi.com:3478",
             "stun:stun.l.google.com:19302",
             "stun:stun1.l.google.com:19302",
-            "stun:stun.stunprotocol.org:3478",
+            # "stun:stun.stunprotocol.org:3478",
         ]
         
         # 从环境变量读取TURN服务器配置
