@@ -10,7 +10,7 @@ class ICEConfig:
     def __init__(self):
         # 默认STUN服务器
         self.default_stun_urls = [
-            "stun:stun.miwifi.com:3478",
+            # "stun:stun.miwifi.com:3478",
             "stun:stun.l.google.com:19302",
             "stun:stun1.l.google.com:19302",
             "stun:stun.stunprotocol.org:3478",
