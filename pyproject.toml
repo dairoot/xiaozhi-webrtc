@@ -18,7 +18,7 @@ dependencies = [
     "opuslib>=3.0.0",
     "opencv-python>=4.8.0",
     "aiortc>=1.13.0",
-    "xiaozhi-sdk>=0.4.6",
+    "xiaozhi-sdk>=0.4.10",
 ]
 
 [project.optional-dependencies]
@@ -38,7 +38,9 @@ packages = ["src"]
 
 [tool.uv]
 index-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
-dev-dependencies = [
+
+[dependency-groups]
+dev = [
     "pytest>=7.0",
     "black>=23.0",
     "flake8>=6.0"

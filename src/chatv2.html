@@ -829,9 +829,17 @@
 
 
                 // 记录首次用户交互（避免浏览器在无用户手势时拦截震动），并尝试解锁音频
-                this._onFirstUserInteract = () => { this.hasUserInteracted = true; this.unlockAudio(); };
-                window.addEventListener('pointerdown', this._onFirstUserInteract, { once: true, capture: true });
-                window.addEventListener('keydown', this._onFirstUserInteract, { once: true, capture: true });
+                // 不使用 once:true，因为移动端浏览器手势会过期，需要每次点击都尝试解锁
+                this._onUserInteract = () => {
+                    this.hasUserInteracted = true;
+                    this.unlockAudio();
+                    // 如果有待播放的音乐，在用户手势上下文中直接尝试播放
+                    if (this.audioUnlocked && this.pendingMusicQueue.length > 0) {
+                        this.drainPendingMusicQueue();
+                    }
+                };
+                window.addEventListener('pointerdown', this._onUserInteract, { capture: true });
+                window.addEventListener('keydown', this._onUserInteract, { capture: true });
             },
             beforeDestroy() {
                 // 清理事件监听器
@@ -844,11 +852,11 @@
                 document.removeEventListener('touchend', this.handleGlobalTouchEnd);
 
 
-                // 清理首次用户交互监听
-                if (this._onFirstUserInteract) {
-                    window.removeEventListener('pointerdown', this._onFirstUserInteract, { capture: true });
-                    window.removeEventListener('keydown', this._onFirstUserInteract, { capture: true });
-                    this._onFirstUserInteract = null;
+                // 清理用户交互监听
+                if (this._onUserInteract) {
+                    window.removeEventListener('pointerdown', this._onUserInteract, { capture: true });
+                    window.removeEventListener('keydown', this._onUserInteract, { capture: true });
+                    this._onUserInteract = null;
                 }
             },
             computed: {
@@ -1790,7 +1798,6 @@
                 },
                 // 解锁移动端音频播放能力，并在解锁后自动播放排队的音乐
                 unlockAudio() {
-                    if (this.audioUnlocked) return;
                     try {
                         // 已存在的远端音频流绑定到 WebAudio 以触发解锁
                         if (!this._audioCtx) {
@@ -1802,16 +1809,19 @@
                         if (this._audioCtx && this._audioCtx.state === 'suspended') {
                             this._audioCtx.resume().catch(() => {});
                         }
-                        // 通过短静音播放进一步“解锁”iOS
-                        const silent = new Audio();
-                        silent.src = 'data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAA';
-                        silent.volume = 0;
-                        silent.play().catch(() => {});
 
-                        this.audioUnlocked = true;
-                        this.drainPendingMusicQueue();
+                        if (!this.audioUnlocked) {
+                            // 通过短静音播放进一步“热身”iOS音频系统（不以其成功与否作为解锁条件）
+                            try {
+                                const silent = new Audio();
+                                silent.src = 'data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAA';
+                                silent.volume = 0;
+                                silent.play().catch(() => {});
+                            } catch (_) {}
+                            // 同步标记为已解锁，实际播放能力依赖用户手势上下文
+                            this.audioUnlocked = true;
+                        }
                     } catch (_) {
-                        // 若失败，提示一次
                         this.promptAudioUnlockMessageOnce();
                     }
                 },
@@ -1827,10 +1837,10 @@
                 promptAudioUnlockMessageOnce() {
                     if (this.hasShownAudioUnlockTip) return;
                     this.hasShownAudioUnlockTip = true;
-                    // this.messages.push({
-                    //     role: 'assistant',
-                    //     content: '🔊 请点击页面任意位置以启用音频播放（浏览器限制）'
-                    // });
+                    this.messages.push({
+                        role: 'assistant',
+                        content: '🔊 请点击页面任意位置以启用音乐播放（浏览器限制）'
+                    });
                     this.$nextTick(() => { this.scrollToBottom(); });
                 },
                 playMusicUrl(url) {
@@ -1859,12 +1869,11 @@
                         audio.play().then(() => {
                             // ok
                         }).catch((err) => {
-                            // iOS/Android 无用户手势时可能失败，回退到入队并提示
+                            // iOS/Android 无用户手势时可能失败，回退到入队
+                            // 不重置 audioUnlocked，下次用户点击时会在手势上下文中重试队列
                             this.currentAudio = null;
                             this.pendingMusicQueue.push(url);
-                            this.audioUnlocked = false; // 重新等待手势解锁
-                            this.promptAudioUnlockMessageOnce();
-                            console.warn('audio.play() 被阻止，等待解锁:', err);
+                            console.warn('audio.play() 被阻止，等待用户点击后重试:', err);
                         });
                         audio.addEventListener('ended', () => { if (this.currentAudio === audio) { this.currentAudio = null; } });
                         audio.addEventListener('error', () => { if (this.currentAudio === audio) { this.currentAudio = null; } });

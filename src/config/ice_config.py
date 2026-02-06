@@ -24,8 +24,8 @@ class ICEConfig:
         self.turn_url = os.getenv("TURN_SERVER_URL")
         self.turn_username = os.getenv("TURN_USERNAME")
         self.turn_credential = os.getenv("TURN_PASSWORD")
-
-        self.default_stun_urls.append(self.turn_url.replace("turn:", "stun:"))
+        if self.turn_url:
+            self.default_stun_urls.append(self.turn_url.replace("turn:", "stun:"))
         
         # TURN服务器密钥（用于生成临时凭证）
         # 如果使用coturn等支持REST API的TURN服务器，使用共享密钥
