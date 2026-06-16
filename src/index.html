@@ -1191,9 +1191,13 @@
                     if (savedLanguage && (savedLanguage === 'zh' || savedLanguage === 'en')) {
                         this.currentLanguage = savedLanguage;
                     } else {
-                        // 根据浏览器语言自动检测
-                        const browserLang = navigator.language || navigator.userLanguage;
-                        this.currentLanguage = browserLang.startsWith('zh') ? 'zh' : 'en';
+                        const urlLang = new URLSearchParams(window.location.search).get('lang');
+                        if (urlLang) {
+                            this.currentLanguage = urlLang.startsWith('zh') ? 'zh' : 'en';
+                        } else {
+                            const browserLang = navigator.language || navigator.userLanguage;
+                            this.currentLanguage = browserLang.startsWith('zh') ? 'zh' : 'en';
+                        }
                     }
 
                     const savedMac = localStorage.getItem('macAddress');
