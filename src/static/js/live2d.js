@@ -6,6 +6,7 @@ class Live2DManager {
     constructor() {
         this.live2dApp = null;
         this.live2dModel = null;
+        this.canvas = null;
         this.isTalking = false;
         this.mouthAnimationId = null;
         this.mouthParam = 'ParamMouthOpenY';
@@ -33,6 +34,7 @@ class Live2DManager {
     async initializeLive2D() {
         try {
             const canvas = document.getElementById('live2d-stage');
+            this.canvas = canvas;
 
             // 供内部使用
             window.PIXI = PIXI;
@@ -98,34 +100,20 @@ class Live2DManager {
             this.live2dModel.on('pointerdown', (event) => {
                 try {
                     const global = event.data.global;
-                    const bounds = this.live2dModel.getBounds();
-                    // 仅在点击落在模型可见范围内时判定
-                    if (!bounds || !bounds.contains(global.x, global.y)) return;
-
-                    const relX = (global.x - bounds.x) / (bounds.width || 1);
-                    const relY = (global.y - bounds.y) / (bounds.height || 1);
-                    let area = '';
-                    // 经验阈值：模型可见矩形的上部 20% 视为"头部"区域
-                    console.log('relX', relX, 'relY', relY);
-                    if (relX >= 0.4 && relX <= 0.6) {
-                        if (relY <= 0.15) {
-                            area = 'Head';
-                        }else if (relY <= 0.23) {
-                            area = 'Face';
-                        }else {
-                            area = 'Body';
-                        }
-                    } 
+                    const area = this._getAreaFromGlobal(global);
                     if (area === '') {
                         return;
                     }
-                    
+
                     // 记录按下状态用于滑动判定
                     this._pointerDown = true;
                     this._downPos = { x: global.x, y: global.y };
                     this._downTime = performance.now();
                     this._downArea = area;
                     this._movedBeyondClick = false;
+
+                    // 按下脸部时切换为"捏住"手势
+                    this._updateCursor(global);
 
                     const now = performance.now();
                     const dt = now - (this._lastClickTime || 0);
@@ -171,8 +159,12 @@ class Live2DManager {
             // 指针移动：用于判定是否从"点击"升级为"滑动"
             this.live2dModel.on('pointermove', (event) => {
                 try {
-                    if (!this._pointerDown) return;
                     const global = event.data.global;
+                    if (!this._pointerDown) {
+                        // 悬停时根据所在区域更新光标（脸部显示"捏脸"手势）
+                        this._updateCursor(global);
+                        return;
+                    }
                     const dx = global.x - this._downPos.x;
                     const dy = global.y - this._downPos.y;
                     const dist = Math.hypot(dx, dy);
@@ -222,16 +214,67 @@ class Live2DManager {
                 finally {
                     this._pointerDown = false;
                     this._movedBeyondClick = false;
+                    // 松手后恢复为悬停状态的光标
+                    const g = (event && event.data && event.data.global) ? event.data.global : null;
+                    this._updateCursor(g);
                 }
             };
 
             this.live2dModel.on('pointerup', handlePointerUp);
             this.live2dModel.on('pointerupoutside', handlePointerUp);
+
+            // 指针移出模型时恢复默认光标
+            this.live2dModel.on('pointerout', () => {
+                if (!this._pointerDown && this.canvas) {
+                    this.canvas.style.cursor = 'default';
+                }
+            });
             
                 
         } catch (err) {
             console.error('加载 Live2D 模型失败:', err);
         }
+    }
+
+    /**
+     * 根据全局坐标判定命中区域（Head/Face/Body），未命中返回 ''
+     * @param {{x:number, y:number}} global
+     * @returns {string}
+     */
+    _getAreaFromGlobal(global) {
+        if (!this.live2dModel || !global) return '';
+        const bounds = this.live2dModel.getBounds();
+        // 仅在落在模型可见范围内时判定
+        if (!bounds || !bounds.contains(global.x, global.y)) return '';
+
+        const relX = (global.x - bounds.x) / (bounds.width || 1);
+        const relY = (global.y - bounds.y) / (bounds.height || 1);
+        // 经验阈值：模型可见矩形上部按高度划分头部/脸部
+        if (relX >= 0.4 && relX <= 0.6) {
+            if (relY <= 0.15) return 'Head';
+            if (relY <= 0.23) return 'Face';
+            return 'Body';
+        }
+        return '';
+    }
+
+    /**
+     * 根据当前指针位置更新画布光标：
+     * 悬停在模型(头部/脸部/身体)显示"捏一捏"手势(grab)，按住时为"捏住"(grabbing)
+     * @param {{x:number, y:number}|null} global
+     */
+    _updateCursor(global) {
+        if (!this.canvas) return;
+        const overModel = this._getAreaFromGlobal(global) !== '';
+        const grabbedModel = this._pointerDown && this._downArea !== '';
+
+        let cursor = 'default';
+        if (grabbedModel) {
+            cursor = 'grabbing';
+        } else if (overModel) {
+            cursor = this._pointerDown ? 'grabbing' : 'grab';
+        }
+        this.canvas.style.cursor = cursor;
     }
 
     /**
